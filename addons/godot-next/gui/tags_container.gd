@@ -1,0 +1,2 @@
+extends PackedGridContainer
+class_name TagsContainer
