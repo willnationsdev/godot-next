@@ -53,10 +53,10 @@ func update_trail():
 func render_trail():
 	clear()
 	begin(Mesh.PRIMITIVE_TRIANGLES)
-	#begin(Mesh.PRIMITIVE_LINE_STRIP)
+	
 	var local_points = []
 	for p in points:
-		local_points.append(p - global_transform.origin)
+		local_points.append(to_local(p))
 	var last_p = Vector3()
 	var verts = []
 	var ind = 0
@@ -64,23 +64,25 @@ func render_trail():
 	var last_first_vec = Vector3()
 	# create vertex loops around points
 	for p in local_points:
-		var new_last_points = []
 		var offset = last_p - p
 		if offset == Vector3():
 			continue
-		var y_vec = offset.normalized() # get vector pointing from this point to last point
-		var x_vec = Vector3()
+		var z_vec = offset.normalized() # get vector pointing from this point to last point
+		var y_vec = Vector3()
 		if first_iteration:
-			x_vec = y_vec.cross(y_vec.rotated(Vector3(1, 0, 0), 0.3)) #cross product with random vector to get a perpendicular vector
+			z_vec = Vector3.FORWARD
+			var up_vec = to_local(Vector3.UP + global_transform.origin)
+			y_vec = up_vec # want a line of vertices that always faces up
 		else:
-			x_vec = y_vec.cross(last_first_vec).cross(y_vec).normalized() # keep each loop at the same rotation as the previous
+			y_vec = z_vec.cross(last_first_vec).cross(z_vec).normalized() # keep each loop at the same rotation as the previous
+		
 		var width = max_radius
 		if shape != 0:
 			width = (1 - ease((ind + 1.0) / density_lengthwise, shape)) * max_radius
 		var seg_verts = []
 		var f_iter = true
 		for i in range(density_around): # set up row of verts for each level
-			var new_vert = p + width * x_vec.rotated(y_vec, i * 2 * PI / density_around).normalized()
+			var new_vert = p + width * y_vec.rotated(z_vec, i * 2 * PI / density_around).normalized()
 			if f_iter:
 				last_first_vec = new_vert - p
 				f_iter = false
@@ -96,26 +98,30 @@ func render_trail():
 		var nxt = verts[j + 1]
 		for i in range(density_around):
 			var nxt_i = (i + 1) % density_around
-			#order added affects normal
+			var normal = (nxt[i] - cur[i]).cross(cur[nxt_i] - cur[i])
+			set_normal(normal)
 			add_vertex(cur[i])
 			add_vertex(cur[nxt_i])
 			add_vertex(nxt[i])
 			add_vertex(cur[nxt_i])
 			add_vertex(nxt[nxt_i])
 			add_vertex(nxt[i])
-	
+
 	if verts.size() > 1:
 		#cap off top
 		for i in range(density_around):
 			var nxt = (i + 1) % density_around
+			var normal = (Vector3() - verts[0][i]).cross(verts[0][nxt] - verts[0][i])
+			set_normal(normal)
 			add_vertex(verts[0][i])
 			add_vertex(Vector3())
 			add_vertex(verts[0][nxt])
-		
-		
+
 		#cap off bottom
 		for i in range(density_around):
 			var nxt = (i + 1) % density_around
+			var normal = (verts[verts.size() - 1][nxt] - verts[verts.size() - 1][i]).cross(last_p - verts[verts.size() - 1][i])
+			set_normal(normal)
 			add_vertex(verts[verts.size() - 1][i])
 			add_vertex(verts[verts.size() - 1][nxt])
 			add_vertex(last_p)
