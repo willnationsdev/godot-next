@@ -56,7 +56,7 @@ func render_trail():
 	#begin(Mesh.PRIMITIVE_LINE_STRIP)
 	var local_points = []
 	for p in points:
-		local_points.append(p - global_transform.origin)
+		local_points.append(to_local(p))
 	var last_p = Vector3()
 	var verts = []
 	var ind = 0
